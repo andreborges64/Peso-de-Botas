@@ -14,7 +14,7 @@ const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt
 const number = v => { if (typeof v === 'number') return v; const n=Number(String(v??'').replace(',','.')); return Number.isFinite(n)?n:0; };
 const codeKey = v => String(v ?? '').trim();
 function baseStorageKey(id){ return `peso-botas-db-${id}`; }
-function save(options={}){
+function save(){
   if(!db) return;
   localStorage.setItem(baseStorageKey(activeBaseId), JSON.stringify(db));
   // Mantém a chave antiga como cópia de compatibilidade para versões anteriores.
@@ -23,7 +23,6 @@ function save(options={}){
   if(meta) meta.updatedAt=new Date().toISOString();
   localStorage.setItem(BASES_KEY, JSON.stringify(bases));
   localStorage.setItem(ACTIVE_BASE_KEY, activeBaseId||'');
-  if(!options.skipCloud && window.OneDriveSync) window.OneDriveSync.queueSync();
 }
 function makeBaseId(){ return `base-${Date.now()}-${Math.random().toString(36).slice(2,7)}`; }
 function unwrapDatabase(payload){
@@ -37,7 +36,7 @@ function addBase(name,database,makeActive=true){
   const clean=JSON.parse(JSON.stringify(database));
   bases.push({id,name:(name||'Nova base').trim()||'Nova base',createdAt:new Date().toISOString(),updatedAt:new Date().toISOString(),storage:'local'});
   localStorage.setItem(baseStorageKey(id),JSON.stringify(clean));
-  if(makeActive){ activeBaseId=id; db=clean; normalizeDatabase(); if(window.OneDriveSync)window.OneDriveSync.useBase(id); save(); }
+  if(makeActive){ activeBaseId=id; db=clean; normalizeDatabase(); save(); }
   else localStorage.setItem(BASES_KEY,JSON.stringify(bases));
   return id;
 }
@@ -46,7 +45,7 @@ function activateBase(id){
   const target=bases.find(x=>x.id===id); if(!target) throw new Error('Base não encontrada');
   save();
   const raw=localStorage.getItem(baseStorageKey(id)); if(!raw) throw new Error('Os dados desta base não foram encontrados neste navegador');
-  db=JSON.parse(raw); activeBaseId=id; localStorage.setItem(ACTIVE_BASE_KEY,id); normalizeDatabase(); if(window.OneDriveSync)window.OneDriveSync.useBase(id); save();
+  db=JSON.parse(raw); activeBaseId=id; localStorage.setItem(ACTIVE_BASE_KEY,id); normalizeDatabase(); save();
 }
 function collectionOf(model){return String(model||'').trim().slice(0,2);}
 function normalizeReduced(){
@@ -84,7 +83,9 @@ function normalizeDatabase(){
   normalizeReduced();importHistoricalMatrices();
 }
 async function init(){
-  if(window.OneDriveSync){ try{await window.OneDriveSync.handleCallback();}catch(error){sessionStorage.removeItem('peso-botas-od-pending');history.replaceState({},document.title,location.pathname);setTimeout(()=>notify(error.message,true),300);} }
+  // Remove configurações e tokens remanescentes da tentativa antiga de integração com OneDrive.
+  for(const key of Object.keys(localStorage)){if(key==='peso-botas-ms-client-id-v1'||key.startsWith('peso-botas-onedrive-config-'))localStorage.removeItem(key);}
+  for(const key of Object.keys(sessionStorage)){if(key.startsWith('peso-botas-od-'))sessionStorage.removeItem(key);}
   try{ bases=JSON.parse(localStorage.getItem(BASES_KEY)||'[]'); }catch(e){ bases=[]; }
   activeBaseId=localStorage.getItem(ACTIVE_BASE_KEY)||null;
   if(bases.length){
@@ -107,10 +108,8 @@ async function init(){
     bases=[{id:activeBaseId,name:'Base principal',createdAt:new Date().toISOString(),updatedAt:new Date().toISOString(),storage:'local'}];
   }
   normalizeDatabase();
-  if(window.OneDriveSync){window.OneDriveSync.configure({getDatabase:()=>db,setDatabase:data=>{db=JSON.parse(JSON.stringify(data));normalizeDatabase();save({skipCloud:true});renderAll();},getBaseName:()=>bases.find(x=>x.id===activeBaseId)?.name||'Base de dados'});window.OneDriveSync.useBase(activeBaseId);}
-  save({skipCloud:true});
+  save();
   bindNavigation(); bindGlobalActions(); renderAll();
-  if(window.OneDriveSync){ await window.OneDriveSync.finishPending(); if(!sessionStorage.getItem('peso-botas-od-pending')) await window.OneDriveSync.resumeConnection(); }
   if('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('./sw.js').catch(()=>{});
 }
 function notify(msg,error=false){const el=$('#notice');el.textContent=msg;el.hidden=false;el.classList.toggle('error',error);window.clearTimeout(notify.timer);notify.timer=setTimeout(()=>el.hidden=true,4500);}
@@ -136,7 +135,7 @@ function renderDashboard(){const s=stats();const recent=[...db.history].filter(x
     <div class="card"><div class="section-head"><div><h2>Pesagens recentes</h2><p>Últimos registros adicionados</p></div><button class="button" data-go="history">Ver histórico</button></div>
       ${recent.length?`<div class="table-wrap"><table><thead><tr><th>Tipo</th><th>Reduzido</th><th>Tam.</th><th>Matriz</th><th>Peso líquido</th></tr></thead><tbody>${recent.map(x=>`<tr><td><span class="tag ${x.type==='BICOLOR'?'blue':''}">${x.type==='BICOLOR'?'Bicolor':'Monocolor'}</span></td><td>${esc(x.reduced)}</td><td>${esc(x.size)}</td><td>${esc(x.matrix)}</td><td class="number"><strong>${fmt(x.net)} kg</strong></td></tr>`).join('')}</tbody></table></div>`:'<div class="empty">Nenhuma pesagem registrada ainda.</div>'}
     </div>
-    <div class="card"><div class="section-head"><div><h2>Atalhos</h2><p>Operações principais</p></div></div><div class="mini-list"><div class="mini-row"><span>Registrar nova pesagem</span><button class="button button-primary" data-go="weighing">Iniciar</button></div><div class="mini-row"><span>Cadastrar matriz</span><button class="button" data-go="matrices">Abrir</button></div><div class="mini-row"><span>Consultar consumo médio</span><button class="button" data-go="reports">Relatórios</button></div></div><div class="muted-box">A base inicial foi carregada da planilha. Os registros antigos de monocolor foram preservados como histórico importado. As bases podem ser exportadas e transferidas. A sincronização com OneDrive pode ser configurada em Bases de dados.</div></div>
+    <div class="card"><div class="section-head"><div><h2>Atalhos</h2><p>Operações principais</p></div></div><div class="mini-list"><div class="mini-row"><span>Registrar nova pesagem</span><button class="button button-primary" data-go="weighing">Iniciar</button></div><div class="mini-row"><span>Cadastrar matriz</span><button class="button" data-go="matrices">Abrir</button></div><div class="mini-row"><span>Consultar consumo médio</span><button class="button" data-go="reports">Relatórios</button></div></div><div class="muted-box">A base inicial foi carregada da planilha. Os registros antigos de monocolor foram preservados como histórico importado. As bases podem ser exportadas e transferidas em arquivo JSON.</div></div>
   </div>`;
   $$('[data-go]',$('#page-dashboard')).forEach(b=>b.addEventListener('click',()=>go(b.dataset.go)));
 }
@@ -154,39 +153,11 @@ function renderBases(){
       <div class="muted-box">Trocar de base não mistura nem apaga os dados. Cada base mantém seu próprio histórico, reduzidos, matrizes e configurações.</div></div>
       <div class="card"><h2>Transferir para outro responsável</h2><p class="subtle">Exporte a base completa e envie o arquivo para a pessoa que assumirá o aplicativo.</p><div class="mini-list" style="margin-top:12px"><div class="mini-row"><span>Exportar base completa</span><button class="button" id="base-export">Exportar JSON</button></div><div class="mini-row"><span>Importar como nova base</span><label class="button file-button">Importar JSON<input type="file" id="base-import" accept="application/json" hidden /></label></div></div><div class="muted-box">A importação cria uma base separada e não substitui a base atual. O arquivo inclui histórico, reduzidos, matrizes, coleções e tabelas de peso.</div></div>
     </div>
-    <div class="card" style="margin-top:16px"><div class="section-head"><div><h2>Bases neste dispositivo</h2><p>${bases.length} base(s) cadastrada(s)</p></div><button class="button" id="base-new">Criar base nova</button></div><div class="table-wrap"><table><thead><tr><th>Nome</th><th>Pesagens</th><th>Última alteração</th><th>Armazenamento</th><th>Status</th></tr></thead><tbody>${sorted.map(b=>{let data={history:[],reduced:[],matrices:[]};try{data=JSON.parse(localStorage.getItem(baseStorageKey(b.id))||'{}');}catch(e){}return `<tr><td><strong>${esc(b.name)}</strong></td><td>${(data.history||[]).filter(x=>!x.deleted).length}</td><td>${b.updatedAt?new Date(b.updatedAt).toLocaleString('pt-BR'):'—'}</td><td>Este navegador</td><td>${b.id===activeBaseId?'<span class="tag green">Em uso</span>':'<span class="tag">Disponível</span>'}</td></tr>`;}).join('')}</tbody></table></div></div>
-    <div class="card" style="margin-top:16px" id="onedrive-card"><div class="section-head"><div><h2>Sincronização com OneDrive</h2><p class="subtle">Conecte uma pasta compartilhada para manter esta base atualizada entre dispositivos.</p></div><span class="tag" id="od-status">Não conectado</span></div>
-      <div class="field-grid">
-        <div class="field full"><label for="od-client-id">ID do aplicativo Microsoft (Client ID)</label><input id="od-client-id" placeholder="Cole aqui a ID do aplicativo registrado na Microsoft" value="${esc(window.OneDriveSync?.getStatus().clientId||'')}" /></div>
-        <div class="field full"><label for="od-folder-url">Link da pasta compartilhada do OneDrive</label><input id="od-folder-url" placeholder="Cole o link de compartilhamento da pasta" value="${esc(window.OneDriveSync?.getStatus().folderUrl||'')}" /></div>
-      </div>
-      <div class="muted-box">Compartilhe a pasta com cada funcionário usando a opção de pessoas específicas e permissão de edição. Cada pessoa entra com sua própria conta Microsoft. O arquivo sincronizado se chamará <strong>peso-de-botas-base.json</strong>. Não use um link público de edição.</div>
-      <div class="mini-list" style="margin-top:12px">
-        <div class="mini-row"><span>Endereço de retorno exigido pela Microsoft</span><strong id="od-redirect" style="font-size:11px;word-break:break-all">${esc(window.OneDriveSync?.redirectUri()||location.href)}</strong></div>
-        <div class="mini-row"><span>Conta conectada</span><strong id="od-account">${esc(window.OneDriveSync?.getStatus().email||'—')}</strong></div>
-        <div class="mini-row"><span>Última sincronização</span><strong id="od-last-sync">${window.OneDriveSync?.getStatus().lastSynced?new Date(window.OneDriveSync.getStatus().lastSynced).toLocaleString('pt-BR'):'—'}</strong></div>
-      </div>
-      <div class="form-actions" style="gap:8px;flex-wrap:wrap">
-        <button class="button" id="od-save">Salvar configuração</button>
-        <button class="button button-primary" id="od-connect">Conectar e sincronizar</button>
-        <button class="button" id="od-sync">Sincronizar agora</button>
-        <button class="button" id="od-reload">Carregar versão da nuvem</button>
-        <button class="button button-danger" id="od-disconnect">Desconectar</button>
-      </div>
-      <div class="muted-box">A sincronização automática ocorre após alterações. Se duas pessoas tentarem salvar ao mesmo tempo, o aplicativo bloqueia a sobrescrita e pede para carregar a versão mais recente da nuvem. Nesta primeira etapa, não há mesclagem automática de alterações simultâneas.</div>
-    </div>`;
+    <div class="card" style="margin-top:16px"><div class="section-head"><div><h2>Bases neste dispositivo</h2><p>${bases.length} base(s) cadastrada(s)</p></div><button class="button" id="base-new">Criar base nova</button></div><div class="table-wrap"><table><thead><tr><th>Nome</th><th>Pesagens</th><th>Última alteração</th><th>Armazenamento</th><th>Status</th></tr></thead><tbody>${sorted.map(b=>{let data={history:[],reduced:[],matrices:[]};try{data=JSON.parse(localStorage.getItem(baseStorageKey(b.id))||'{}');}catch(e){}return `<tr><td><strong>${esc(b.name)}</strong></td><td>${(data.history||[]).filter(x=>!x.deleted).length}</td><td>${b.updatedAt?new Date(b.updatedAt).toLocaleString('pt-BR'):'—'}</td><td>Este navegador</td><td>${b.id===activeBaseId?'<span class="tag green">Em uso</span>':'<span class="tag">Disponível</span>'}</td></tr>`;}).join('')}</tbody></table></div></div>`;
   $('#base-switch').addEventListener('click',()=>{const id=$('#base-select').value;if(id===activeBaseId){notify('Esta base já está em uso.');return;}if(!confirm('Trocar para a base selecionada? A base atual será salva automaticamente.'))return;try{activateBase(id);renderAll();go('bases');notify('Base alterada com sucesso.');}catch(e){notify(e.message||'Não foi possível trocar de base.',true);}});
   $('#base-export').addEventListener('click',()=>downloadFile(`base-peso-botas-${(active?.name||'dados').toLowerCase().replace(/[^a-z0-9]+/g,'-')}-${new Date().toISOString().slice(0,10)}.json`,JSON.stringify(baseExportPayload(),null,2),'application/json'));
   $('#base-import').addEventListener('change',async e=>{const f=e.target.files[0];if(!f)return;try{const payload=JSON.parse(await f.text());const incoming=unwrapDatabase(payload);const suggested=payload.baseName||f.name.replace(/\.json$/i,'');const name=prompt('Nome para esta nova base:',suggested||'Base importada');if(name===null)return;save();addBase(name,incoming,true);renderAll();go('bases');notify('Base importada e ativada. A base anterior foi preservada.');}catch(err){notify('Não foi possível importar: arquivo inválido ou incompatível.',true);}e.target.value='';});
-  $('#base-new').addEventListener('click',()=>{const name=prompt('Nome da nova base:','Nova base');if(name===null||!name.trim())return;if(!confirm('Criar uma base nova com os cadastros e tabelas padrão, mas sem histórico de pesagens?'))return;let fresh=window.PESO_BOTAS_INITIAL_DATA?JSON.parse(JSON.stringify(window.PESO_BOTAS_INITIAL_DATA)):JSON.parse(JSON.stringify(db));fresh.history=[];fresh.matrices=[];fresh.createdAt=new Date().toISOString();save();addBase(name,fresh,true);normalizeDatabase();save();renderAll();go('bases');notify('Nova base criada.');});  const od=window.OneDriveSync;
-  const paintCloudStatus=()=>{if(!od)return;const st=od.getStatus();const tag=$('#od-status');if(tag){tag.textContent=st.conflict?'Conflito':st.busy?'Sincronizando…':st.connected?'Conectado':st.signedIn?'Conta conectada':'Não conectado';tag.className=`tag ${st.conflict?'red':st.connected?'green':'blue'}`;}if($('#od-account'))$('#od-account').textContent=st.email||'—';if($('#od-last-sync'))$('#od-last-sync').textContent=st.lastSynced?new Date(st.lastSynced).toLocaleString('pt-BR'):'—';};
-  $('#od-save').addEventListener('click',()=>{od.saveClientId($('#od-client-id').value);od.saveFolderUrl($('#od-folder-url').value);notify('Configuração do OneDrive salva neste dispositivo.');paintCloudStatus();});
-  $('#od-connect').addEventListener('click',async()=>{try{od.saveClientId($('#od-client-id').value);od.saveFolderUrl($('#od-folder-url').value);await od.connectAndLoad();paintCloudStatus();}catch(e){notify(e.message||'Não foi possível conectar ao OneDrive.',true);paintCloudStatus();}});
-  $('#od-sync').addEventListener('click',async()=>{try{await od.syncNow();paintCloudStatus();}catch(e){notify(e.message,true);paintCloudStatus();}});
-  $('#od-reload').addEventListener('click',async()=>{if(!confirm('Carregar a versão da nuvem? A cópia local atual será preservada como backup no navegador.'))return;try{await od.reloadCloud();renderAll();go('bases');paintCloudStatus();}catch(e){notify(e.message,true);paintCloudStatus();}});
-  $('#od-disconnect').addEventListener('click',()=>{od.disconnect();paintCloudStatus();notify('Conta Microsoft desconectada deste navegador. A base local foi mantida.');});
-  window.addEventListener('peso-botas-cloud-status',paintCloudStatus);
-  paintCloudStatus();
+  $('#base-new').addEventListener('click',()=>{const name=prompt('Nome da nova base:','Nova base');if(name===null||!name.trim())return;if(!confirm('Criar uma base nova com os cadastros e tabelas padrão, mas sem histórico de pesagens?'))return;let fresh=window.PESO_BOTAS_INITIAL_DATA?JSON.parse(JSON.stringify(window.PESO_BOTAS_INITIAL_DATA)):JSON.parse(JSON.stringify(db));fresh.history=[];fresh.matrices=[];fresh.createdAt=new Date().toISOString();save();addBase(name,fresh,true);normalizeDatabase();save();renderAll();go('bases');notify('Nova base criada.');});
 }
 
 function reducedByCode(code){return db.reduced.find(x=>x.code===codeKey(code));}

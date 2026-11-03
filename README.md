@@ -1,4 +1,4 @@
-# Peso de Botas — versão Web 0.1.5
+# Peso de Botas — versão Web 0.1.6
 
 Versão baseada na 0.1.3, com remoção completa da integração experimental com OneDrive. O aplicativo mantém o armazenamento local no navegador e a transferência de bases por arquivos JSON.
 

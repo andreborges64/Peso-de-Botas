@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#111827" />
+  <meta name="description" content="Controle de pesagem e consumo de botas." />
+  <title>Peso de Botas</title>
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="brand"><div class="brand-mark">PB</div><div><strong>PESO DE BOTAS</strong><small>Controle de consumo</small></div></div>
+      <nav id="main-nav" aria-label="Navegação principal">
+        <button class="nav-item active" data-page="dashboard"><span>▦</span> Visão geral</button>
+        <button class="nav-item" data-page="weighing"><span>＋</span> Nova pesagem</button>
+        <button class="nav-item" data-page="history"><span>≡</span> Histórico</button>
+        <button class="nav-item" data-page="matrices"><span>▤</span> Matrizaria</button>
+        <button class="nav-item" data-page="registrations"><span>⚙</span> Cadastros</button>
+        <button class="nav-item" data-page="reports"><span>▥</span> Relatórios</button>
+        <button class="nav-item" data-page="bases"><span>☁</span> Bases de dados</button>
+      </nav>
+      <div class="sidebar-bottom"><span class="status-dot"></span> Bases separadas neste dispositivo <small>Versão Web 0.1.4</small></div>
+    </aside>
+    <main class="main-content">
+      <header class="topbar"><div><div class="eyebrow">CONTROLE INDUSTRIAL</div><h1 id="page-title">Visão geral</h1></div><div class="top-actions"><button class="button button-quiet" id="export-backup">↓ Backup</button><label class="button button-quiet file-button">↑ Restaurar<input type="file" id="import-backup" accept="application/json" hidden /></label></div></header>
+      <div id="notice" class="notice" role="status" hidden></div>
+      <section id="page-dashboard" class="page active"></section>
+      <section id="page-weighing" class="page"></section>
+      <section id="page-history" class="page"></section>
+      <section id="page-matrices" class="page"></section>
+      <section id="page-registrations" class="page"></section>
+      <section id="page-reports" class="page"></section>
+      <section id="page-bases" class="page"></section>
+      <footer>Projeto em desenvolvimento · Bases locais com sincronização opcional pelo OneDrive.</footer>
+    </main>
+  </div>
+  <script src="data-inicial.js"></script>
+  <script src="onedrive.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

@@ -1,3 +1,4 @@
+Attempting to perform the InitializeDefaultDrives operation on the 'FileSystem' provider failed.
 package br.com.pesodebotas.app
 
 import android.content.Context
@@ -398,6 +399,14 @@ private fun systemWeight(db: JSONObject, code: String, size: String): Double? {
     val caneR = br - sr
     val caneL = bl - sl
     val sys = if (red != null && size.isNotBlank()) systemWeight(db, red.str("code"), size) else null
+    val matrixHistoryVisible = listOf(right, left, soleRight, soleLeft, bootRight, bootLeft).all { it.isBlank() }
+    val matrixCollection = red?.str("modelPrefix")?.takeIf { it.isNotBlank() } ?: red?.str("model")?.take(2).orEmpty()
+    val weighedMatrices = if (red != null && size.isNotBlank()) {
+        db.arr("history").objects().filter { h ->
+            !h.bool("deleted") && h.str("reduced").trim() == red.str("code").trim() && h.str("size").trim() == size &&
+                (h.str("modelPrefix").ifBlank { h.str("model").take(2) }) == matrixCollection
+        }.map { it.str("matrix").trim() }.filter { it.isNotBlank() }.distinct().sorted()
+    } else emptyList()
 
     ScreenColumn {
         SectionTitle("Nova pesagem", "Selecione o reduzido e a numeração. Os acessórios são calculados automaticamente.")
@@ -409,6 +418,17 @@ private fun systemWeight(db: JSONObject, code: String, size: String): Double? {
             SimpleDropdown("Reduzido", reducedCode, reds.map { "${it.str("code")} · ${it.str("model")}" }, { selected -> reducedCode = selected.substringBefore(" · "); size = "" })
             SimpleDropdown("Numeração", size, sizes, { size = it }, enabled = red != null)
             OutlinedTextField(matrix, { matrix = it }, label = { Text("Número da matriz") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
+            if (red != null && size.isNotBlank() && matrixHistoryVisible) {
+                Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
+                    Text(
+                        if (weighedMatrices.isEmpty()) "Nenhuma matriz pesada registrada para esta combinação."
+                        else "Matrizes já pesadas nesta coleção: ${weighedMatrices.joinToString(", ")}",
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 9.dp),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
             OutlinedTextField(red?.str("color") ?: "", {}, label = { Text("Cor") }, modifier = Modifier.fillMaxWidth(), readOnly = true)
             Text("Acessórios identificados", fontWeight = FontWeight.SemiBold)
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -724,7 +744,7 @@ private fun csvCell(value: Any?): String {
             Text("Exporte a base completa e envie o arquivo para a pessoa que assumirá o aplicativo. A importação cria uma base separada e preserva a atual.", style = MaterialTheme.typography.bodySmall)
             Button(onClick = onExport, modifier = Modifier.fillMaxWidth()) { Icon(Icons.Default.FileUpload, null); Spacer(Modifier.width(8.dp)); Text("Exportar base completa (JSON)") }
             OutlinedButton(onClick = onImport, modifier = Modifier.fillMaxWidth()) { Icon(Icons.Default.FileDownload, null); Spacer(Modifier.width(8.dp)); Text("Importar JSON como nova base") }
-            Text("O arquivo inclui histórico, reduzidos, matrizes, coleções e tabelas de peso. O formato é compatível com a versão Web 0.1.5.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text("O arquivo inclui histórico, reduzidos, matrizes, coleções e tabelas de peso. O formato é compatível com a versão Web 0.1.6.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         } }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) { SectionTitle("Bases neste dispositivo", "${repo.bases.size} base(s)"); TextButton(onClick = { showNew = true }) { Icon(Icons.Default.Add, null); Text("Nova base") } }
         repo.bases.sortedByDescending { it.id == repo.activeId }.forEach { b ->

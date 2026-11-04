@@ -1,6 +1,7 @@
+Attempting to perform the InitializeDefaultDrives operation on the 'FileSystem' provider failed.
 # Peso de Botas — Android nativo (Kotlin)
 
-Projeto Android nativo em Kotlin + Jetpack Compose, convertido a partir da versão Web 0.1.5.
+Projeto Android nativo em Kotlin + Jetpack Compose, convertido a partir da versão Web 0.1.6.
 
 ## Funcionalidades incluídas
 
@@ -15,7 +16,7 @@ Projeto Android nativo em Kotlin + Jetpack Compose, convertido a partir da vers�
 
 ## Compatibilidade JSON Web ↔ Android
 
-A exportação usa o mesmo envelope da Web 0.1.5:
+A exportação usa o mesmo envelope da Web 0.1.6:
 
 - `format`: `peso-botas-base`
 - `formatVersion`: `1`
@@ -23,7 +24,7 @@ A exportação usa o mesmo envelope da Web 0.1.5:
 - `exportedAt`
 - `database`: objeto completo da base
 
-O Android importa tanto esse envelope quanto um objeto de banco sem envelope. A versão Web 0.1.5 também reconhece o envelope exportado pelo Android. Assim, é possível exportar na Web e importar no Android, ou exportar no Android e importar na Web.
+O Android importa tanto esse envelope quanto um objeto de banco sem envelope. A versão Web 0.1.6 também reconhece o envelope exportado pelo Android. Assim, é possível exportar na Web e importar no Android, ou exportar no Android e importar na Web.
 
 A importação de base cria uma nova base separada e mantém a base anterior. A opção Restaurar do topo substitui a base atualmente ativa, como a restauração de backup da versão Web.
 

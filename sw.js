@@ -1,4 +1,3 @@
-Attempting to perform the InitializeDefaultDrives operation on the 'FileSystem' provider failed.
 const CACHE = 'peso-botas-v0.1.6';
 const FILES = ['./','./index.html','./styles.css','./app.js','./data-inicial.json','./data-inicial.js','./manifest.webmanifest'];
 self.addEventListener('install', e => e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES))));

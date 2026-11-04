@@ -1,4 +1,3 @@
-Attempting to perform the InitializeDefaultDrives operation on the 'FileSystem' provider failed.
 package br.com.pesodebotas.app
 
 import android.content.Context

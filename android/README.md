@@ -1,4 +1,3 @@
-Attempting to perform the InitializeDefaultDrives operation on the 'FileSystem' provider failed.
 # Peso de Botas — Android nativo (Kotlin)
 
 Projeto Android nativo em Kotlin + Jetpack Compose, convertido a partir da versão Web 0.1.6.

@@ -1,4 +1,3 @@
-Attempting to perform the InitializeDefaultDrives operation on the 'FileSystem' provider failed.
 const STORE_KEY = 'peso-botas-db-v1';
 const BASES_KEY = 'peso-botas-bases-v1';
 const ACTIVE_BASE_KEY = 'peso-botas-active-base-v1';
